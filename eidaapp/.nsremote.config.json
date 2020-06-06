@@ -1,0 +1,5 @@
+{
+    "circleci": {
+        "sshRepositoryURL": "{{an SSH GitHub repository url}}"
+    }
+}

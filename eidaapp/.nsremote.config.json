@@ -1,5 +1,5 @@
 {
     "circleci": {
-        "sshRepositoryURL": "{{an SSH GitHub repository url}}"
+        "sshRepositoryURL": "git@github.com:kesavanpos/EIDAToolkitIOS.git"
     }
 }

@@ -1,0 +1,74 @@
+fastlane_version '2.140.0'
+require_relative './common/utils'
+
+platform :ios do
+ before_all do
+   setup_circle_ci
+ end
+
+ desc 'Build the iOS application.'
+ lane :build do
+  nativescriptCLICommand = ["tns", "prepare", "ios"];
+  cliCommandArgs = getCLIArgsFromEnv([
+    "release", "forDevice", "log", "env.local", "env.remotePublish", "clean", "hmr",
+    "env.snapshot", "env.production", "env.uglify", "env.sourceMap", "env.hiddenSourceMap",
+    "env.hmr", "env.unitTesting", "env.verbose", "env.snapshotInDocker", "env.skipSnapshotTools",
+    "env.compileSnapshot", "env.appPath", "env.appResourcesPath"]);
+  inRelease = cliCommandArgs.include?("--release");
+  isForDevice = cliCommandArgs.include?("--forDevice");
+  nativescriptCLICommand.push(*cliCommandArgs);
+
+  defaultProvisionType = inRelease ? "appstore" : "development";
+  defaultBuildType = inRelease ? "app-store" : "development";
+  defaultBuildConfiguration = inRelease ? "Release" : "Debug";
+  provisionType = getEnvVar("IOS_PROVISION_TYPE") || defaultProvisionType;
+  buildType = getEnvVar("IOS_BUILD_TYPE") || defaultBuildType;
+  buildConfiguration = getEnvVar("IOS_BUILD_CONFIGURATION") || defaultBuildConfiguration;
+  
+  promoteBuildEnvVarForCurrentProcess("MATCH_PASSWORD");
+  match(
+    type: provisionType,
+    app_identifier: "org.nativescript.eidaapp",
+    git_url: getEnvVar("IOS_SIGNING_REPO_URL"),
+    username: getEnvVar("IOS_APPLE_ID")
+  )
+
+  # we are not able to pass ENV variable with dots directly to a bash command as it will fail with 
+  # "Failed to find mobile provision with UUID or Name: .nativescript.cloudTest_developmen"
+  matchProvisionName = ENV["sigh_org.nativescript.eidaapp_#{provisionType}"];
+  nativescriptCLICommand.push("--provision", "\"#{matchProvisionName}\"")
+  
+  sh(nativescriptCLICommand);
+
+  gym(
+    scheme: "eidaapp",
+    workspace: File.join("platforms/ios", "eidaapp.xcworkspace"),
+    export_method: buildType,
+    configuration: buildConfiguration,
+    destination: isForDevice ? 'generic/platform=iOS' : 'generic/platform=iOS Simulator',
+    skip_package_ipa: !isForDevice,
+    archive_path: File.expand_path('~/fl_output/eidaapp'),
+    output_directory: File.expand_path('~/fl_output')
+  )
+
+  if (!isForDevice)
+    zip(
+      path: File.expand_path("~/fl_output/eidaapp.xcarchive/Products/Applications/eidaapp.app"),
+      output_path: File.expand_path("~/fl_output/eidaapp.app.zip")
+    )
+  end
+
+  if (cliCommandArgs.include?("--env.remotePublish"))
+    promoteBuildEnvVarForCurrentProcess("FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD");
+    upload_to_testflight(
+      skip_submission: true,
+      username: getEnvVar("IOS_APPLE_ID"),
+      app_identifier: "org.nativescript.eidaapp",
+      apple_id: getEnvVar("IOS_APPSTORE_CONNECT_APP_ID"),
+      ipa: "~/fl_output/eidaapp.ipa",
+      skip_waiting_for_build_processing: true
+    )
+  end
+ end
+
+end

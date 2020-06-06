@@ -1,5 +1,6 @@
 {
     "circleci": {
-        "sshRepositoryURL": "git@github.com:kesavanpos/EIDAToolkitIOS.git"
+        "httpsRepositoryURL": "https://github.com/kesavanpos/EIDAToolkitIOS",
+        "GITHUB_ACCESS_TOKEN": "bcf72a93455b5df985449b99ce933cc21a73ea19"
     }
 }

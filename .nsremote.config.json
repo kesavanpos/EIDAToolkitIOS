@@ -1,0 +1,6 @@
+{
+    "circleci": {
+        "httpsRepositoryURL": "https://github.com/kesavanpos/EIDAToolkitIOS",
+        "GITHUB_ACCESS_TOKEN": "753320bc607ee4f9ebd8fadf6eac68406f2c00ca"
+    }
+}

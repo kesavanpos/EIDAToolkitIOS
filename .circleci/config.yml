@@ -1,0 +1,59 @@
+version: 2
+jobs:
+  build:
+    macos:
+      xcode: 11.3.0
+    working_directory: "~/eidaapp"
+    environment:
+      FL_OUTPUT_DIR: ~/fl_output
+    shell: /bin/bash --login -o pipefail
+    steps:
+      # load all SSH keys from the CircleCI project settings
+      # in order to be able to pull the ios signing repository
+      - add_ssh_keys:
+      # setup NPM
+      - run: echo 'export PATH=~/npm_prefix/bin:$PATH' >> $BASH_ENV
+      - run: npm config set prefix ~/npm_prefix
+
+      # setup global modules - TNS
+      - restore_cache:
+          keys:
+            - global-modules-mac-6.7.4
+      - run: tns --version || npm i -g nativescript@6.7.4
+      - save_cache:
+          paths:
+            - ~/npm_prefix
+          key: global-modules-mac-6.7.4
+      - run: tns usage-reporting disable
+      - run: tns error-reporting disable
+
+      - checkout
+
+      # NODE PACKAGES
+      - run: npm install
+
+      # INSTALL GEMS
+      - restore_cache:
+          key: gems-mac-{{ checksum "Gemfile" }}
+      - run: bundle config set path 'vendor/bundle'
+      - run: bundle install
+      - save_cache:
+          key: gems-mac-{{ checksum "Gemfile" }}
+          paths:
+            - vendor/bundle
+      - run: pod repo update
+      - run:
+          name: Fastlane
+          command: bundle exec fastlane ios build
+      - store_artifacts:
+          path: ~/fl_output/eidaapp.ipa
+          destination: "~/output/eidaapp.ipa"
+      - store_artifacts:
+          path: ~/fl_output/eidaapp.app.zip
+          destination: "~/output/eidaapp.ipa.zip"
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+      - build
